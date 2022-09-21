@@ -57,7 +57,9 @@ public:
 	}
 	static double inverseNormal(double cumulativeProbability, double mean, double stddev){
 	    // DESENVOLVER
-	    return 0.0;	    
+        double invnormalresult;
+        invnormalresult = cumulativeProbability*stddev + mean;
+	    return invnormalresult;	    
 	}
 	static double inverseTStudent(double cumulativeProbability, double mean, double stddev, double degreeFreedom){
 	    // DESENVOLVER
