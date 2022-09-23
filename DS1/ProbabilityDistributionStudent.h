@@ -2,6 +2,9 @@
 #ifndef PROBABILITYDISTRIBUTIONSTUDENT_H
 #define PROBABILITYDISTRIBUTIONSTUDENT_H
 
+#include <cmath>
+#include <iostream>
+#include <limits>
 #include "ProbabilityDistributionBase.h"
 #include "PDProxy.h"
 #include "SolverProxy.h"
@@ -32,7 +35,7 @@
 class ProbabilityDistributionStudent : public ProbabilityDistributionBase {
 public:
 
-    /*!dd
+    /*!
     * Todos os métodos "inverseXYZ" abaixo devem retornar o valor de x tal que a probabilidade acumulada da distribuição XYZ até x seja "cumulativeProbability".
     * Esses métodos devem tirar proveito do conhecimento disponível sobre cada uma das distribuições de probabilidade para definir os intervalor iniciais para a "busca de raízes", ou
     *   melhor, a *busca pela probabilidade acumulada*. 
@@ -48,24 +51,142 @@ public:
         então o cálculo descrito deve ser realziado e o resultado deve ser guardado na cache antes de ser retornado.
     */
 	static double inverseChi2(double cumulativeProbability, double degreeFreedom){
-	    // DESENVOLVER
-	    return 0.0;
+	    double result = 2 * ProbabilityDistributionStudent::invRegLowGamma(cumulativeProbability, 0.5 * degreeFreedom);
+	    std::cout << "result: " << result << std::endl;
+	    return result;
 	}
 	static double inverseFFisherSnedecor(double cumulativeProbability, double d1, double d2){
 	    // DESENVOLVER
 	    return 0.0;
 	}
 	static double inverseNormal(double cumulativeProbability, double mean, double stddev){
-	    // DESENVOLVER
-        double invnormalresult;
-        invnormalresult = cumulativeProbability*stddev + mean;
-	    return invnormalresult;	    
+	    return cumulativeProbability*stddev + mean;
 	}
 	static double inverseTStudent(double cumulativeProbability, double mean, double stddev, double degreeFreedom){
-	    // DESENVOLVER
-	    return 0.0;	    
+	    // DESENVOLVER 
+	    return (cumulativeProbability)/ sqrt((3.247)/degreeFreedom);	    
 	}
-
+	
+	static double invRegLowGamma(double cumulativeProbability, double degreeFreedom) {
+	    if (cumulativeProbability >= 1) {
+	        return std::max(100.0, degreeFreedom + 100 * sqrt(degreeFreedom));
+	    }
+	    
+	    if (cumulativeProbability <= 0) {
+	        return 0;
+	    }
+	    
+	    const double a1 = cumulativeProbability - 1;
+	    const double eps = 1e-8;
+	    const double gln = ProbabilityDistributionStudent::logGamma(cumulativeProbability);
+	    double inverseRegLowGamma, err, t, u, pp, lna1, afac;
+	    if (cumulativeProbability > 1) {
+	        lna1 = log(a1);
+	        afac = exp(a1 * (lna1 - 1) - gln);
+	        pp = cumulativeProbability < 0.5 ? cumulativeProbability : 1 - cumulativeProbability;
+	        t = sqrt(-2 * log(pp));
+	        inverseRegLowGamma = (2.30753 + t * 0.27061) / (1 + t * (0.99229 + t * 0.4481)) - t;
+	        if (cumulativeProbability < 0.5) {
+	            inverseRegLowGamma = -inverseRegLowGamma;
+	        }
+	        
+	        inverseRegLowGamma = std::max(1e-3, degreeFreedom * pow(1 - 1 / (9 * degreeFreedom) - inverseRegLowGamma / (3 * sqrt(degreeFreedom)), 3));
+	    } else {
+	        t = 1 - degreeFreedom * (0.253 + degreeFreedom * 0.12);
+	        if (cumulativeProbability < t) {
+	            inverseRegLowGamma = pow(cumulativeProbability / t, 1 / degreeFreedom);
+	        } else {
+	            inverseRegLowGamma = log(1 - (cumulativeProbability - t) / (1 - t));
+	        }
+	    }
+	    
+	    for (double j = 0; j < 12; ++j) {
+	        if (inverseRegLowGamma <= 0) {
+	            return 0;
+	        }
+	        
+	        err = ProbabilityDistributionStudent::regLowGamma(degreeFreedom, inverseRegLowGamma) - cumulativeProbability;
+	        if (degreeFreedom > 1) {
+	            t = afac * exp(-(inverseRegLowGamma - a1) + a1 * (log(inverseRegLowGamma) - lna1));
+	        } else {
+	            t = exp(-inverseRegLowGamma + a1 * log(inverseRegLowGamma) - gln);
+	        }
+	        
+	        u = err / t;
+	        inverseRegLowGamma -= (t = u / (1 - 0.5 * std::min(1.0, u * ((degreeFreedom - 1) / inverseRegLowGamma - 1))));
+	        if (inverseRegLowGamma <= 0) {
+	            inverseRegLowGamma = 0.5 * (inverseRegLowGamma + t);
+	        }
+	        
+	        if (abs(t) < eps * inverseRegLowGamma) {
+	            break;
+	        }
+	    }
+	    
+	    return inverseRegLowGamma;
+	}
+	
+	static double logGamma(double cumulativeProbability) {
+	    if (cumulativeProbability == 1 || cumulativeProbability == 2) {
+	        return 0;
+	    }
+	    
+	    if (cumulativeProbability == 0) {
+	        return std::numeric_limits<double>::infinity();
+	    }
+	    
+	    std::vector<double> cof = {
+	        76.18009172947146,
+	        -86.50532032941677,
+	        24.01409824083091,
+	        -1.231739572450155,
+	        0.1208650973866179e-2,
+	        -0.5395239384953e-5,
+	    };
+	    
+	    double ser = 1.000000000190015;
+	    double xx, y, tmp;
+	    tmp = y = xx = cumulativeProbability + 5.5;
+	    tmp -= xx + 0.5 * log(tmp);
+	    for (int i = 0; i < cof.size(); ++i) {
+	        double current = cof[i];
+	        ser += current / ++y;
+	    }
+	    
+	    return log(2.506628274631005 * ser / xx) - tmp;
+	}
+	
+	static double regLowGamma(double a, double x) {
+	    double logGammaOfA = ProbabilityDistributionStudent::logGamma(a);
+	    double b = x + 1 - a;
+	    double c = 1 / 1.0e-30;
+	    double d = 1 / b;
+	    double h = d;
+	    double i = 1;
+	    const double maxOfIterationsForA = -~((int) (log((a >= 1) ? a : 1 / a) * 8.5 + a * 0.4 + 17));
+	    if (x < a + 1) {
+	        double sum = 1 / a;
+	        double del = sum;
+	        for (double ap = a; i <= maxOfIterationsForA; ++i) {
+	            sum += del *= x / ++ap;
+	        }
+	        
+	        return (sum * exp(-x + a * log(x) - (logGammaOfA)));
+	    }
+	    
+	    double an;
+	    for (; i <= maxOfIterationsForA; ++i) {
+	        an = -i * (i - a);
+	        b += 2;
+	        d = an * d + b;
+	        c = b + an /c;
+	        d = 1 / d;
+	        h *= d * c;
+	    }
+	    
+	    return (1 - h * exp(-x + a * log(x) - (logGammaOfA)));
+	}
+ 
 
     /*!
     * Os métodos "findInverseXYZ" abaixo são métodos *recursivos* recebem os limites inferior "a" e superior "b" do intervalo a pesquisar,  e também o valor da 

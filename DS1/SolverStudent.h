@@ -25,7 +25,7 @@ public:
 	virtual void setMinimumStepSize(double e) { 
         minimumStepSize = e;
 	}
-//
+
     /*!
     * Esse método deve retornar o atributo privado que informa o tamanho mínimo do passo (h_min) a ser dado numa integração ou derivação numérica
     */
@@ -150,54 +150,95 @@ public:
         std::vector<double> res(initValue);
         double n = this->getMaxSteps();
         double h = (max - min) / n;
-        std::cout << "h: " << h << std::endl;
-        for (int i = 0; i < f.size(); ++i) {
-            Solver_if::f2p currentFunction = f[i];
-            double x = min;
-            double y = initValue[i];
-            for (int j = 0; j < n; ++j) {
-                double k1 = h * currentFunction(x, y);
-                double k2 = h * currentFunction(x + 0.5 * h, y + 0.5 * k1);
-                double k3 = h * currentFunction(x + 0.5 * h, y + 0.5 * k2);
-                double k4 = h * currentFunction(x + h, y + k3);
-                x = x + h;
-                y = y + (k1 + k2 + k2 + k3 + k3 + k4) / 6;
-            }
-            std::cout << "x: " << x << std::endl;
-            std::cout << "y: " << y << std::endl;
-            res[i] = y;
+        double x0 = min;
+        Solver_if::f2p f0 = f[0];
+        double y0 = initValue[0];
+        for (int j = 0; j < n; ++j) {
+            double k1 = h * f0(x0, y0);
+            double k2 = h * f0(x0 + 0.5 * h, y0 + 0.5 * k1);
+            double k3 = h * f0(x0 + 0.5 * h, y0 + 0.5 * k2);
+            double k4 = h * f0(x0 + h, y0 + k3);
+            x0 = x0 + h;
+            y0 = y0 + (k1 + k2 + k2 + k3 + k3 + k4) / 6;
         }
-
+        
+        res[0] = y0;
 	    return res;
 	}
 
-	virtual std::vector<double> derivate(double min, double max,  std::vector<double> initValue, std::vector<Solver_if::f3p> f, double p2) { 
+	virtual std::vector<double> derivate(double min, double max,  std::vector<double> initValue, std::vector<Solver_if::f3p> f) { 
         std::vector<double> res(initValue);
         double n = this->getMaxSteps();
         double h = (max - min) / n;
-        std::cout << "h: " << h << std::endl;
-        for (int i = 0; i < f.size(); ++i) {
-            Solver_if::f3p currentFunction = f[i];
-            double x = min;
-            double y = initValue[i];
-            for (int j = 0; j < 0; ++j) {
-                double k1 = h * currentFunction(x, y, p2);
-                double k2 = h * currentFunction(x + 0.5 * h, y + 0.5 * k1, p2);
-                double k3 = h * currentFunction(x + 0.5 * h, y + 0.5 * k2, p2);
-                double k4 = h * currentFunction(x + h, y + k3, p2);
-                x = x + h;
-                y = y + (k1 + k2 + k2 + k3 + k3 + k4) / 6;
-            }
-            std::cout << "x: " << x << std::endl;
-            std::cout << "y: " << y << std::endl;
-            res[i] = y;
+        double x0, x1 = min;
+        Solver_if::f3p f0 = f[0];
+        double y0 = initValue[0];
+        Solver_if::f3p f1 = f[1];
+        double y1 = initValue[1];
+        for (int j = 0; j < n; ++j) {
+            double k01 = h * f0(x0, y0, y1);
+            double k02 = h * f0(x0 + 0.5 * h, y0 + 0.5 * k01, y1 + 0.5 * k01);
+            double k03 = h * f0(x0 + 0.5 * h, y0 + 0.5 * k02, y1 + 0.5 * k02);
+            double k04 = h * f0(x0 + h, y0 + k03, y1 + k03);
+            
+            double k11 = h * f1(x1, y0, y1);
+            double k12 = h * f1(x1 + 0.5 * h, y0 + 0.5 * k11, y1 + 0.5 * k11);
+            double k13 = h * f1(x1 + 0.5 * h, y0 + 0.5 * k12, y1 + 0.5 * k12);
+            double k14 = h * f1(x1 + h, y0 + k13, y1 + k13);
+            
+            x0 += h;
+            x1 += h;
+            y0 += (k01 + k02 + k02 + k03 + k03 + k04) / 6;
+            y1 += (k11 + k12 + k12 + k13 + k13 + k14) / 6;
         }
-
+        
+        std::cout << "x0: " << x0 << std::endl;
+        std::cout << "y0: " << y0 << std::endl;
+        std::cout << "x1: " << x1 << std::endl;
+        std::cout << "y1: " << y1 << std::endl;
+        res[0] = y0;
+        res[1] = y1;
 	    return res;
 	}
 
-	virtual std::vector<double> derivate(double initPoint, double endPoint,  std::vector<double> initValue, std::vector<Solver_if::f4p> f) { 
+	virtual std::vector<double> derivate(double min, double max,  std::vector<double> initValue, std::vector<Solver_if::f4p> f) { 
 	    std::vector<double> res(initValue);
+        double n = this->getMaxSteps();
+        double h = (max - min) / n;
+        double x0, x1, x2 = min;
+        Solver_if::f4p f0 = f[0];
+        double y0 = initValue[0];
+        Solver_if::f4p f1 = f[1];
+        double y1 = initValue[1];
+        Solver_if::f4p f2 = f[2];
+        double y2 = initValue[2];
+        for (int j = 0; j < n; ++j) {
+            double k01 = h * f0(x0, y0, y1, y2);
+            double k02 = h * f0(x0 + 0.5 * h, y0 + 0.5 * k01, y1 + 0.5 * k01, y2 + 0.5 * k01);
+            double k03 = h * f0(x0 + 0.5 * h, y0 + 0.5 * k02, y1 + 0.5 * k02, y2 + 0.5 * k02);
+            double k04 = h * f0(x0 + h, y0 + k03, y1 + k03, y2 + k03);
+            
+            double k11 = h * f1(x1, y0, y1, y2);
+            double k12 = h * f1(x1 + 0.5 * h, y0 + 0.5 * k11, y1 + 0.5 * k11, y2 + 0.5 * k11);
+            double k13 = h * f1(x1 + 0.5 * h, y0 + 0.5 * k12, y1 + 0.5 * k12, y2 + 0.5 * k12);
+            double k14 = h * f1(x1 + h, y0 + k13, y1 + k13, y2 + k13);
+            
+            double k21 = h * f2(x2, y0, y1, y2);
+            double k22 = h * f2(x2 + 0.5 * h, y0 + 0.5 * k21, y1 + 0.5 * k21, y2 + 0.5 * k21);
+            double k23 = h * f2(x2 + 0.5 * h, y0 + 0.5 * k22, y1 + 0.5 * k22, y2 + 0.5 * k22);
+            double k24 = h * f2(x2 + h, y0 + k23, y1 + k23, y2 + k23);
+            
+            x0 += h;
+            x1 += h;
+            x2 += h;
+            y0 += (k01 + k02 + k02 + k03 + k03 + k04) / 6;
+            y1 += (k11 + k12 + k12 + k13 + k13 + k14) / 6;
+            y2 += (k21 + k22 + k22 + k23 + k23 + k24) / 6;
+        }
+
+        res[0] = y0;
+        res[1] = y1;
+        res[2] = y2;
 	    return res;
 	}
 
