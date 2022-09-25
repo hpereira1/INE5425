@@ -30,6 +30,32 @@ public:
     */
     std::vector<double> movingAverage(unsigned int n, unsigned short k) {
        std::vector<double> array;
+        std::vector<double> data;
+       double denominator = n*(n+1)/2;
+       double prepare = n - 1;
+       double sum = 0;
+       double numerator = 0;
+       double datum = 0;
+       unsigned int real = -1;
+       int lengh;
+        for(unsigned int i = 0;i<2*k+1;i++){
+            data[i] = DAProxy::getDatum(i);
+            datum = DAProxy::getDatum(i);
+            sum += datum;
+            numerator += (i + 1) * datum;}
+        lengh = sizeof(data);
+        for(unsigned int i = 0; i < lengh; i++, real++)
+        {
+            datum = DAProxy::getDatum(i);
+            sum += datum;
+            numerator += n * datum;
+            if(real>= 0)
+            {
+                sum -= data[real];
+            }
+            array[i] = numerator/ denominator;
+            numerator -=sum;
+        }
        return array;
     }
 private:
